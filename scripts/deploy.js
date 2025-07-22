@@ -80,6 +80,10 @@ class DeploymentManager {
     try {
       for (const [key, value] of Object.entries(secrets)) {
         console.log(`  ${key}を更新中...`);
+        if (key === 'ENCRYPTED_REMINDERS_CONFIG') {
+          console.log(`  🔍 ${key}の値の最初の50文字: ${value.substring(0, 50)}`);
+          console.log(`  🔍 ${key}の値の長さ: ${value.length}`);
+        }
         execSync(`npx wrangler secret put ${key}`, {
           input: value,
           stdio: ['pipe', 'inherit', 'inherit']
