@@ -74,12 +74,7 @@ cp reminders.example.json reminders.json
 ```bash
 # Wranglerにログイン
 npx wrangler login
-
-# KV名前空間を作成
-npx wrangler kv:namespace create "REMINDER_KV"
 ```
-
-`wrangler.toml` の KV namespace ID を更新してください。
 
 ### 6. GitHub Secrets の設定
 
