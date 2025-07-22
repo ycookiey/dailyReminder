@@ -5,6 +5,25 @@ const path = require('path');
 const Ajv = require('ajv');
 const { CryptoUtil } = require('../src/crypto.js');
 
+function loadEnvFile() {
+  const envPath = path.join(process.cwd(), '.env');
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    envContent.split('\n').forEach(line => {
+      const trimmedLine = line.trim();
+      if (trimmedLine && !trimmedLine.startsWith('#') && trimmedLine.includes('=')) {
+        const [key, ...valueParts] = trimmedLine.split('=');
+        if (key && valueParts.length > 0) {
+          const value = valueParts.join('=').replace(/^["']|["']$/g, '');
+          process.env[key] = value;
+        }
+      }
+    });
+  }
+}
+
+loadEnvFile();
+
 class ConfigValidator {
   constructor() {
     this.schemaPath = path.join(process.cwd(), 'schemas', 'reminders.schema.json');
