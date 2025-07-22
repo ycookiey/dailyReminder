@@ -7,6 +7,7 @@
     "dev": "wrangler dev",
     "deploy": "node scripts/deploy.js",
     "encrypt": "node scripts/encrypt.js",
+    "setup-secrets": "node scripts/setup-secrets.js",
     "test": "jest",
     "validate": "node scripts/validate.js"
   },

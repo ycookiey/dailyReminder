@@ -83,10 +83,19 @@ npx wrangler kv:namespace create "REMINDER_KV"
 
 ### 6. GitHub Secrets の設定
 
+#### 自動設定（推奨）
+
+```bash
+# GitHub CLI (gh) がインストール済みで、認証が完了している場合
+npm run setup-secrets
+```
+
+#### 手動設定
+
 GitHubリポジトリの Settings > Secrets and variables > Actions で以下を設定：
 
 - `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_ACCOUNT_ID`  
 - `DISCORD_WEBHOOK_URL`
 - `MANUAL_TRIGGER_SECRET_KEY`
 - `ENCRYPTION_SECRET_KEY`
@@ -120,6 +129,7 @@ curl -X POST https://your-worker.your-subdomain.workers.dev/manual-trigger \
 - `npm run deploy` - フルデプロイプロセスの実行
 - `npm run encrypt` - 設定ファイルの暗号化のみ実行
 - `npm run validate` - 設定ファイルの検証
+- `npm run setup-secrets` - GitHub Secretsの自動設定
 - `npm run dev` - ローカル開発モード
 - `npm test` - テストの実行
 
