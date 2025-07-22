@@ -9,6 +9,7 @@
     "encrypt": "node scripts/encrypt.js",
     "setup-secrets": "node scripts/setup-secrets.js",
     "test": "jest",
+    "test-production": "node scripts/trigger-production.js",
     "validate": "node scripts/validate.js"
   },
   "dependencies": {

@@ -110,9 +110,39 @@ npm run deploy
 4. GitHubへのプッシュ
 5. GitHub Actions による自動デプロイ
 
-## 手動実行
+## 本番環境テスト
 
-デバッグやテスト目的で手動実行する場合：
+### 本番リマインダーの手動実行
+
+デプロイ済みのCloudflare Workerを手動でテスト実行できます：
+
+```bash
+# 本番環境フルテスト（ヘルスチェック + リマインダー実行）
+npm run test-production
+
+# ヘルスチェックをスキップしてリマインダー実行
+npm run test-production -- --skip-health
+
+# ヘルスチェック失敗でも強制実行
+npm run test-production -- --force
+
+# ヘルプ表示
+npm run test-production -- --help
+```
+
+**テスト内容:**
+1. Worker URL自動取得（.env または GitHub Secrets から）
+2. Worker ヘルスチェック（`/health` エンドポイント）
+3. 本番リマインダー実行（今日の日付で実行）
+4. 実行結果表示とDiscord通知確認案内
+
+**必要な設定:**
+- `MANUAL_TRIGGER_SECRET_KEY`: .envファイルに設定済み
+- `WORKER_URL`: .envまたはGitHub Secretsに設定（オプション、未設定時は案内表示）
+
+### 直接cURLでの実行
+
+スクリプトを使わずに直接実行する場合：
 
 ```bash
 curl -X POST https://your-worker.your-subdomain.workers.dev/manual-trigger \
@@ -125,6 +155,7 @@ curl -X POST https://your-worker.your-subdomain.workers.dev/manual-trigger \
 - `npm run encrypt` - 設定ファイルの暗号化のみ実行
 - `npm run validate` - 設定ファイルの検証
 - `npm run setup-secrets` - GitHub Secretsの自動設定
+- `npm run test-production` - 本番環境リマインダーテスト実行
 - `npm run dev` - ローカル開発モード
 - `npm test` - テストの実行
 
