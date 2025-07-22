@@ -1,0 +1,14 @@
+name = "daily-reminder"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[triggers]
+crons = ["0 18 * * *"]
+
+[vars]
+ENVIRONMENT = "production"
+
+[[kv_namespaces]]
+binding = "REMINDER_KV"
+id = "your-kv-namespace-id"
+preview_id = "your-preview-kv-namespace-id"

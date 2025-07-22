@@ -1,0 +1,54 @@
+name: Deploy to Cloudflare Workers
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    name: Validate Config and Deploy
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Validate encrypted config schema
+      run: |
+        # 設定ファイルの検証スクリプトを実行
+        npm run validate
+      env:
+        ENCRYPTION_SECRET_KEY: ${{ secrets.ENCRYPTION_SECRET_KEY }}
+
+    - name: Deploy to Cloudflare Workers
+      uses: cloudflare/wrangler-action@v3
+      with:
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        command: deploy
+        secrets: |
+          DISCORD_WEBHOOK_URL
+          MANUAL_TRIGGER_SECRET_KEY  
+          ENCRYPTION_SECRET_KEY
+          ENCRYPTED_REMINDERS_CONFIG
+      env:
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        MANUAL_TRIGGER_SECRET_KEY: ${{ secrets.MANUAL_TRIGGER_SECRET_KEY }}
+        ENCRYPTION_SECRET_KEY: ${{ secrets.ENCRYPTION_SECRET_KEY }}
+        ENCRYPTED_REMINDERS_CONFIG: ${{ secrets.ENCRYPTED_REMINDERS_CONFIG }}
+
+    - name: Test deployment
+      run: |
+        # デプロイ後の動作確認
+        sleep 10
+        curl -f "${{ secrets.WORKER_URL }}/health" || exit 1
