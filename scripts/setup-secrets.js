@@ -140,6 +140,13 @@ class SecretsManager {
         }
       }
 
+      // オプショナルなSecretsの設定（値がある場合のみ）
+      for (const secretKey of this.optionalSecrets) {
+        if (envVars[secretKey]) {
+          await this.setSecret(secretKey, envVars[secretKey]);
+        }
+      }
+
       if (missingSecrets.length > 0) {
         console.log(`\n⚠️ 以下のSecretが.envファイルに見つかりません:`);
         missingSecrets.forEach(key => console.log(`  - ${key}`));
