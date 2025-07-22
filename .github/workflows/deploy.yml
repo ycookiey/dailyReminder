@@ -30,6 +30,21 @@ jobs:
       env:
         ENCRYPTION_SECRET_KEY: ${{ secrets.ENCRYPTION_SECRET_KEY }}
 
+    - name: Check Cloudflare Secrets
+      run: |
+        if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+          echo "❌ CLOUDFLARE_API_TOKEN が設定されていません"
+          echo "Cloudflareダッシュボードでトークンを作成し、GitHub Secretsに設定してください"
+          echo "https://dash.cloudflare.com/profile/api-tokens"
+          exit 1
+        fi
+        if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+          echo "❌ CLOUDFLARE_ACCOUNT_ID が設定されていません"
+          echo "CloudflareダッシュボードのAccount IDをGitHub Secretsに設定してください"
+          exit 1
+        fi
+        echo "✓ Cloudflare Secrets設定確認完了"
+
     - name: Deploy to Cloudflare Workers
       uses: cloudflare/wrangler-action@v3
       with:

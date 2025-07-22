@@ -36,12 +36,12 @@ class SecretsManager {
     this.requiredSecrets = [
       'DISCORD_WEBHOOK_URL',
       'MANUAL_TRIGGER_SECRET_KEY', 
-      'ENCRYPTION_SECRET_KEY'
+      'ENCRYPTION_SECRET_KEY',
+      'CLOUDFLARE_API_TOKEN',
+      'CLOUDFLARE_ACCOUNT_ID'
     ];
     
     this.optionalSecrets = [
-      'CLOUDFLARE_API_TOKEN',
-      'CLOUDFLARE_ACCOUNT_ID',
       'WORKER_URL'
     ];
   }
@@ -161,10 +161,25 @@ class SecretsManager {
 
       await this.promptForOptionalSecrets();
 
-      console.log('\n🎉 必須Secretsの設定が完了しました！');
-      console.log('\n次の手順:');
-      console.log('1. Cloudflare関連のSecretsを手動で設定');
-      console.log('2. GitHub Actionsワークフローをテストするため、コードをプッシュ');
+      if (missingSecrets.length === 0) {
+        console.log('\n🎉 すべての必須Secretsの設定が完了しました！');
+        console.log('\n次の手順:');
+        console.log('1. GitHub Actionsワークフローをテストするため、コードをプッシュ');
+        console.log('2. デプロイ後のWorker URLをWORKER_URLとして設定（オプション）');
+      } else {
+        console.log('\n⚠️  以下のSecretsが.envファイルに設定されていません:');
+        missingSecrets.forEach(key => {
+          console.log(`  - ${key}`);
+          if (key === 'CLOUDFLARE_API_TOKEN') {
+            console.log('    https://dash.cloudflare.com/profile/api-tokens で作成');
+            console.log('    権限: Workers スクリプト - Edit, アカウント設定 - Read');
+          } else if (key === 'CLOUDFLARE_ACCOUNT_ID') {
+            console.log('    Cloudflareダッシュボードのホームページで確認');
+          }
+        });
+        console.log('\n.envファイルに値を設定してから再実行してください。');
+      }
+      
       console.log('\n設定されたSecretsを確認:');
       console.log('  gh secret list');
 
