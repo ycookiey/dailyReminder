@@ -75,13 +75,40 @@ jobs:
         ENCRYPTION_SECRET_KEY: ${{ secrets.ENCRYPTION_SECRET_KEY }}
         ENCRYPTED_REMINDERS_CONFIG: ${{ secrets.ENCRYPTED_REMINDERS_CONFIG }}
 
-    - name: Test deployment
+    - name: Test deployment with retry
       run: |
         if [ -n "${{ secrets.WORKER_URL }}" ]; then
           echo "🧪 デプロイ後の動作確認を実行中..."
-          sleep 10
-          curl -f "${{ secrets.WORKER_URL }}/health" || exit 1
-          echo "✅ ヘルスチェック成功"
+          
+          # 最大3回まで再試行
+          for attempt in 1 2 3; do
+            echo "試行 $attempt/3 - 10秒待機中..."
+            sleep 10
+            
+            if response=$(curl -f -s "${{ secrets.WORKER_URL }}/health" 2>/dev/null); then
+              echo "✅ ヘルスチェック成功 (試行: $attempt)"
+              echo "📊 レスポンス: $response"
+              
+              # バージョンが含まれているかチェック
+              if echo "$response" | grep -q '"version"'; then
+                echo "✅ 最新バージョンが反映されています"
+                break
+              else
+                echo "⚠️  バージョン情報がありません - 古いバージョンの可能性"
+                if [ $attempt -eq 3 ]; then
+                  echo "❌ 最終試行でもバージョンが確認できませんでした"
+                  exit 1
+                fi
+              fi
+            else
+              if [ $attempt -eq 3 ]; then
+                echo "❌ ヘルスチェック失敗 - 3回試行しましたが成功しませんでした"
+                exit 1
+              else
+                echo "⚠️  ヘルスチェック失敗 - 再試行中..."
+              fi
+            fi
+          done
         else
           echo "ℹ️  WORKER_URL が設定されていないため、ヘルスチェックをスキップします"
           echo "Worker URLを確認してください: https://dash.cloudflare.com/workers/"

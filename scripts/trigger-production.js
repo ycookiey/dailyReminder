@@ -68,26 +68,55 @@ class ProductionTester {
     throw new Error('Worker URLを.envファイルのWORKER_URL、またはGitHub SecretsのWORKER_URLに設定してください。');
   }
 
-  async testWorkerHealth(workerUrl) {
+  async testWorkerHealth(workerUrl, maxRetries = 3) {
     console.log('\n🧪 Worker ヘルスチェック実行中...');
     
-    try {
-      const response = await fetch(`${workerUrl}/health`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Worker ヘルスチェック成功');
-        console.log(`📊 ステータス: ${data.status}`);
-        console.log(`⏰ タイムスタンプ: ${data.timestamp}`);
-        return true;
-      } else {
-        console.log(`❌ ヘルスチェック失敗: HTTP ${response.status}`);
-        return false;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`試行 ${attempt}/${maxRetries} - 5秒待機中...`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        const response = await fetch(`${workerUrl}/health`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`✅ Worker ヘルスチェック成功 (試行: ${attempt})`);
+          console.log(`📊 ステータス: ${data.status}`);
+          console.log(`⏰ タイムスタンプ: ${data.timestamp}`);
+          
+          // バージョン情報の確認
+          if (data.version) {
+            console.log(`🔖 バージョン: ${data.version}`);
+            console.log('✅ 最新バージョンが反映されています');
+            return true;
+          } else {
+            console.log('⚠️  バージョン情報がありません - 古いバージョンの可能性');
+            if (attempt === maxRetries) {
+              console.log('❌ 最終試行でもバージョンが確認できませんでした');
+              return false;
+            }
+          }
+        } else {
+          console.log(`❌ ヘルスチェック失敗: HTTP ${response.status}`);
+          if (attempt === maxRetries) {
+            console.log('❌ 最終試行でも失敗しました');
+            return false;
+          } else {
+            console.log('⚠️  再試行中...');
+          }
+        }
+      } catch (error) {
+        console.log(`❌ ヘルスチェック失敗: ${error.message}`);
+        if (attempt === maxRetries) {
+          console.log('❌ 最終試行でも失敗しました');
+          return false;
+        } else {
+          console.log('⚠️  再試行中...');
+        }
       }
-    } catch (error) {
-      console.log(`❌ ヘルスチェック失敗: ${error.message}`);
-      return false;
     }
+    
+    return false;
   }
 
   async triggerReminder(workerUrl, secretKey) {
