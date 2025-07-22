@@ -45,6 +45,19 @@ jobs:
         fi
         echo "✓ Cloudflare Secrets設定確認完了"
 
+    - name: Debug Encrypted Config
+      run: |
+        echo "🔍 ENCRYPTED_REMINDERS_CONFIG の内容を確認中..."
+        echo "最初の50文字: ${ENCRYPTED_REMINDERS_CONFIG:0:50}"
+        echo "データ長: ${#ENCRYPTED_REMINDERS_CONFIG}"
+        if [[ "$ENCRYPTED_REMINDERS_CONFIG" == U2FsdGVkX1* ]]; then
+          echo "⚠️  crypto-js形式を検出 (古い形式)"
+        else
+          echo "✅ Web Crypto API形式を検出 (新しい形式)"
+        fi
+      env:
+        ENCRYPTED_REMINDERS_CONFIG: ${{ secrets.ENCRYPTED_REMINDERS_CONFIG }}
+
     - name: Deploy to Cloudflare Workers
       uses: cloudflare/wrangler-action@v3
       with:
