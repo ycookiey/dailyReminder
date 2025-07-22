@@ -23,7 +23,7 @@ class ConfigEncryptor {
     }
   }
 
-  encrypt() {
+  async encrypt() {
     try {
       console.log('🔐 設定ファイルの暗号化を開始します...\n');
 
@@ -45,7 +45,7 @@ class ConfigEncryptor {
 
       console.log('\n2. 設定ファイルを暗号化中...');
       const crypto = new CryptoUtil(secretKey);
-      const encrypted = crypto.encrypt(config);
+      const encrypted = await crypto.encrypt(config);
       console.log('✓ 暗号化が完了しました。');
 
       console.log('\n3. 暗号化ファイルを保存中...');
@@ -70,7 +70,10 @@ class ConfigEncryptor {
 
 if (require.main === module) {
   const encryptor = new ConfigEncryptor();
-  encryptor.encrypt();
+  encryptor.encrypt().catch(error => {
+    console.error('予期しないエラー:', error);
+    process.exit(1);
+  });
 }
 
 module.exports = { ConfigEncryptor };

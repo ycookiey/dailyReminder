@@ -17,7 +17,7 @@ class WorkerCrypto {
         return await this.decryptCryptoJSFormat(encryptedData, secretKey);
       }
       
-      // 既存のWeb Crypto API形式の復号化処理
+      // Web Crypto API形式の復号化処理（新しい形式）
       console.log('🔧 Web Crypto API形式で復号化');
       const keyBuffer = new TextEncoder().encode(secretKey.padEnd(32, '0').slice(0, 32));
       console.log('キーバッファ長:', keyBuffer.length);
@@ -31,9 +31,7 @@ class WorkerCrypto {
       );
       console.log('✓ 暗号化キーのインポート完了');
       
-      const encryptedBuffer = new Uint8Array(
-        atob(encryptedData).split('').map(c => c.charCodeAt(0))
-      );
+      const encryptedBuffer = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
       console.log('暗号化バッファ長:', encryptedBuffer.length);
       
       const iv = encryptedBuffer.slice(0, 12);

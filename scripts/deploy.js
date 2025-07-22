@@ -58,10 +58,10 @@ class DeploymentManager {
     }
   }
 
-  encryptConfig(config, secretKey) {
+  async encryptConfig(config, secretKey) {
     try {
       const crypto = new CryptoUtil(secretKey);
-      return crypto.encrypt(config);
+      return await crypto.encrypt(config);
     } catch (error) {
       throw new Error(`設定ファイルの暗号化に失敗しました: ${error.message}`);
     }
@@ -146,7 +146,7 @@ class DeploymentManager {
       console.log('✓ リマインダー設定の読み込みが完了しました。');
 
       console.log('\n3. 設定ファイルを暗号化中...');
-      const encryptedConfig = this.encryptConfig(config, envVars.ENCRYPTION_SECRET_KEY);
+      const encryptedConfig = await this.encryptConfig(config, envVars.ENCRYPTION_SECRET_KEY);
       console.log('✓ 設定ファイルの暗号化が完了しました。');
 
       console.log('\n4. 暗号化された設定ファイルを保存中...');
@@ -172,7 +172,10 @@ class DeploymentManager {
 
 if (require.main === module) {
   const manager = new DeploymentManager();
-  manager.deploy();
+  manager.deploy().catch(error => {
+    console.error('予期しないデプロイエラー:', error);
+    process.exit(1);
+  });
 }
 
 module.exports = { DeploymentManager };
