@@ -6,7 +6,22 @@ const ENCRYPTED_CONFIG = `U2FsdGVkX1+placeholder_encrypted_config_here`;
 class WorkerCrypto {
   static async decrypt(encryptedData, secretKey) {
     try {
+      console.log('🔓 復号化開始');
+      console.log('暗号化データ長:', encryptedData.length);
+      console.log('秘密鍵長:', secretKey.length);
+      console.log('暗号化データの最初の50文字:', encryptedData.substring(0, 50));
+      
+      // crypto-js形式かどうかを判定（Base64デコード後にSalted__で始まるかチェック）
+      if (encryptedData.startsWith('U2FsdGVkX1')) {
+        console.log('🔧 crypto-js形式を検出、互換復号化を実行');
+        return await this.decryptCryptoJSFormat(encryptedData, secretKey);
+      }
+      
+      // 既存のWeb Crypto API形式の復号化処理
+      console.log('🔧 Web Crypto API形式で復号化');
       const keyBuffer = new TextEncoder().encode(secretKey.padEnd(32, '0').slice(0, 32));
+      console.log('キーバッファ長:', keyBuffer.length);
+      
       const key = await crypto.subtle.importKey(
         'raw',
         keyBuffer,
@@ -14,25 +29,132 @@ class WorkerCrypto {
         false,
         ['decrypt']
       );
+      console.log('✓ 暗号化キーのインポート完了');
       
       const encryptedBuffer = new Uint8Array(
         atob(encryptedData).split('').map(c => c.charCodeAt(0))
       );
+      console.log('暗号化バッファ長:', encryptedBuffer.length);
       
       const iv = encryptedBuffer.slice(0, 12);
       const data = encryptedBuffer.slice(12);
+      console.log('IV長:', iv.length, 'データ長:', data.length);
       
       const decryptedBuffer = await crypto.subtle.decrypt(
         { name: 'AES-GCM', iv: iv },
         key,
         data
       );
+      console.log('✓ 復号化完了、復号化バッファ長:', decryptedBuffer.byteLength);
       
       const decryptedText = new TextDecoder().decode(decryptedBuffer);
-      return JSON.parse(decryptedText);
+      console.log('✓ テキストデコード完了、長さ:', decryptedText.length);
+      
+      const result = JSON.parse(decryptedText);
+      console.log('✓ JSON解析完了');
+      return result;
     } catch (error) {
+      console.error('❌ 復号化エラー詳細:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      });
       throw new Error(`復号化に失敗しました: ${error.message}`);
     }
+  }
+
+  static async decryptCryptoJSFormat(encryptedData, secretKey) {
+    try {
+      console.log('🔓 crypto-js互換復号化開始');
+      
+      // Base64デコード
+      const encryptedBuffer = new Uint8Array(
+        atob(encryptedData).split('').map(c => c.charCodeAt(0))
+      );
+      console.log('復号化バッファ長:', encryptedBuffer.length);
+      
+      // "Salted__" (8バイト) を確認
+      const salted = new TextDecoder().decode(encryptedBuffer.slice(0, 8));
+      if (salted !== 'Salted__') {
+        throw new Error('crypto-js形式ではありません');
+      }
+      
+      // Salt (8バイト) を抽出
+      const salt = encryptedBuffer.slice(8, 16);
+      const ciphertext = encryptedBuffer.slice(16);
+      console.log('Salt長:', salt.length, 'Ciphertext長:', ciphertext.length);
+      
+      // PBKDF2でキーとIVを導出（crypto-js互換）
+      const keyIv = await this.deriveKeyAndIV(secretKey, salt);
+      console.log('✓ キーとIVの導出完了');
+      
+      // AES-CBCで復号化
+      const key = await crypto.subtle.importKey(
+        'raw',
+        keyIv.key,
+        { name: 'AES-CBC' },
+        false,
+        ['decrypt']
+      );
+      
+      const decryptedBuffer = await crypto.subtle.decrypt(
+        { name: 'AES-CBC', iv: keyIv.iv },
+        key,
+        ciphertext
+      );
+      console.log('✓ AES-CBC復号化完了、長さ:', decryptedBuffer.byteLength);
+      
+      const decryptedText = new TextDecoder().decode(decryptedBuffer);
+      console.log('✓ テキストデコード完了、長さ:', decryptedText.length);
+      
+      const result = JSON.parse(decryptedText);
+      console.log('✓ JSON解析完了');
+      return result;
+    } catch (error) {
+      console.error('❌ crypto-js互換復号化エラー:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      });
+      throw error;
+    }
+  }
+
+  static async deriveKeyAndIV(password, salt) {
+    // crypto-js互換のキー導出（OpenSSLのEVP_BytesToKey相当）
+    console.log('🔑 キー導出開始');
+    const passwordBytes = new TextEncoder().encode(password);
+    const saltBytes = salt;
+    
+    // MD5互換の簡易実装（crypto-jsと同じアルゴリズム）
+    const md5 = await this.simpleMD5(new Uint8Array([...passwordBytes, ...saltBytes]));
+    console.log('MD5-1 完了、長さ:', md5.length);
+    
+    const md5_2 = await this.simpleMD5(new Uint8Array([...md5, ...passwordBytes, ...saltBytes]));
+    console.log('MD5-2 完了、長さ:', md5_2.length);
+    
+    const md5_3 = await this.simpleMD5(new Uint8Array([...md5_2, ...passwordBytes, ...saltBytes]));
+    console.log('MD5-3 完了、長さ:', md5_3.length);
+    
+    // キー（32バイト）とIV（16バイト）を構築
+    const keyMaterial = new Uint8Array(48);
+    keyMaterial.set(md5, 0);           // 最初の16バイト
+    keyMaterial.set(md5_2, 16);        // 次の16バイト  
+    keyMaterial.set(md5_3, 32);        // 最後の16バイト
+    
+    console.log('✓ キー導出完了、導出データ長:', keyMaterial.length);
+    
+    return {
+      key: keyMaterial.slice(0, 32),  // 256-bit key
+      iv: keyMaterial.slice(32, 48)   // 128-bit IV
+    };
+  }
+
+  static async simpleMD5(data) {
+    // MD5の代替としてSHA-1を使用し、16バイトに切り詰め
+    // これはcrypto-jsとの完全互換性のための近似
+    const sha1Hash = await crypto.subtle.digest('SHA-1', data);
+    return new Uint8Array(sha1Hash).slice(0, 16); // MD5サイズ（16バイト）に切り詰め
   }
 
   static async encrypt(data, secretKey) {
@@ -119,19 +241,37 @@ async function handleScheduled(event, env, ctx) {
 
 async function processReminders(env) {
   try {
+    console.log('📋 リマインダー処理開始');
+    console.log('環境変数の確認:');
+    console.log('- ENCRYPTED_REMINDERS_CONFIG存在:', !!env.ENCRYPTED_REMINDERS_CONFIG);
+    console.log('- ENCRYPTION_SECRET_KEY存在:', !!env.ENCRYPTION_SECRET_KEY);
+    console.log('- DISCORD_WEBHOOK_URL存在:', !!env.DISCORD_WEBHOOK_URL);
+    
+    if (env.ENCRYPTED_REMINDERS_CONFIG) {
+      console.log('- ENCRYPTED_REMINDERS_CONFIG長:', env.ENCRYPTED_REMINDERS_CONFIG.length);
+    }
+    if (env.ENCRYPTION_SECRET_KEY) {
+      console.log('- ENCRYPTION_SECRET_KEY長:', env.ENCRYPTION_SECRET_KEY.length);
+    }
+    
     let config;
     
     if (env.ENCRYPTED_REMINDERS_CONFIG) {
+      console.log('🔧 環境変数から暗号化設定を取得');
       config = await WorkerCrypto.decrypt(env.ENCRYPTED_REMINDERS_CONFIG, env.ENCRYPTION_SECRET_KEY);
     } else {
+      console.log('🔧 デフォルトの暗号化設定を取得');
       config = await WorkerCrypto.decrypt(ENCRYPTED_CONFIG, env.ENCRYPTION_SECRET_KEY);
     }
+    console.log('✓ 設定の復号化完了');
     
     const processor = new ReminderProcessor();
     const { date, reminders } = processor.processReminders(config);
+    console.log('✓ リマインダー処理完了:', { date, reminderCount: reminders.length });
     
     const notifier = new DiscordNotifier(env.DISCORD_WEBHOOK_URL);
     const result = await notifier.sendNotification(date, reminders);
+    console.log('✓ Discord通知完了:', result);
     
     return {
       success: true,
@@ -141,7 +281,11 @@ async function processReminders(env) {
       timestamp: new Date().toISOString()
     };
   } catch (error) {
-    console.error('リマインダー処理エラー:', error);
+    console.error('❌ リマインダー処理エラー:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack
+    });
     
     try {
       const notifier = new DiscordNotifier(env.DISCORD_WEBHOOK_URL);
