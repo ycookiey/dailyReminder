@@ -290,15 +290,23 @@ async function processReminders(env) {
     });
     
     try {
-      const notifier = new DiscordNotifier(env.DISCORD_WEBHOOK_URL);
-      await notifier.sendWebhook([{
-        title: '⚠️ システムエラー',
-        description: `リマインダーシステムでエラーが発生しました:\n\`\`\`\n${error.message}\n\`\`\``,
-        color: 0xFF0000,
-        timestamp: new Date().toISOString()
-      }]);
+      // エラー通知の無限ループを防ぐ（Discord関連エラーの場合は通知しない）
+      if (!error.message.includes('Discord') && !error.message.includes('レート制限')) {
+        console.log('🔔 システムエラーをDiscordに通知します');
+        const notifier = new DiscordNotifier(env.DISCORD_WEBHOOK_URL);
+        await notifier.sendWebhook([{
+          title: '⚠️ システムエラー',
+          description: `リマインダーシステムでエラーが発生しました:\n\`\`\`\n${error.message}\n\`\`\``,
+          color: 0xFF0000,
+          timestamp: new Date().toISOString()
+        }]);
+        console.log('✓ エラー通知送信完了');
+      } else {
+        console.log('⚠️ Discord関連エラーのため、エラー通知をスキップします（無限ループ防止）');
+      }
     } catch (notifyError) {
-      console.error('エラー通知の送信に失敗:', notifyError);
+      console.error('エラー通知の送信に失敗:', notifyError.message);
+      console.log('⚠️ エラー通知の送信に失敗しましたが、処理を継続します');
     }
     
     throw error;
