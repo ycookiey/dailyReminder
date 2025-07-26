@@ -31,7 +31,7 @@ class ReminderProcessor {
       if (diffDays >= 0) {
         let message;
         if (countdown.message) {
-          message = countdown.message;
+          message = countdown.message.replace(/{days}/g, diffDays);
         } else if (diffDays === 0) {
           message = `本日が${countdown.name}です！`;
         } else {
