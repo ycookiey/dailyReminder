@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "node scripts/deploy.js",
+    "deploy:force": "node scripts/deploy.js --force",
     "encrypt": "node scripts/encrypt.js",
     "setup-secrets": "node scripts/setup-secrets.js",
+    "force-update-secrets": "node scripts/force-update-secrets.js",
     "test": "jest",
     "test-production": "node scripts/trigger-production.js",
     "validate": "node scripts/validate.js"
