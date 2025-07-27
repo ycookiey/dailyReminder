@@ -266,6 +266,13 @@ async function processReminders(env) {
       config = await WorkerCrypto.decrypt(ENCRYPTED_CONFIG, env.ENCRYPTION_SECRET_KEY);
     }
     console.log('✓ 設定の復号化完了');
+    console.log('📊 復号化した設定の詳細:');
+    console.log('- countdowns:', config.countdowns?.length || 0, '件');
+    console.log('- yearlyTasks:', config.yearlyTasks?.length || 0, '件');
+    console.log('- monthlyTasks:', config.monthlyTasks?.length || 0, '件');
+    console.log('- weeklyTasks:', config.weeklyTasks?.length || 0, '件');
+    console.log('- specificWeekTasks:', config.specificWeekTasks?.length || 0, '件');
+    console.log('- lastWeekTasks:', config.lastWeekTasks?.length || 0, '件');
     
     const processor = new ReminderProcessor();
     const { date, reminders } = processor.processReminders(config);
