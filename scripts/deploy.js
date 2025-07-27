@@ -67,7 +67,7 @@ class DeploymentManager {
     }
   }
 
-  updateCloudflareSecrets(envVars, encryptedConfig, forceUpdate = false) {
+  async updateCloudflareSecrets(envVars, encryptedConfig, forceUpdate = false) {
     console.log(forceUpdate ? 'Cloudflare Workers Secretsを強制更新中...' : 'Cloudflare Workers Secretsを更新中...');
 
     const secrets = {
