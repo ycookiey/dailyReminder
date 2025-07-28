@@ -240,6 +240,62 @@ class DeploymentManager {
     console.log('✓ 暗号化された設定ファイルを保存しました:', this.encryptedConfigPath);
   }
 
+  async updateGitHubSecrets(envVars, encryptedConfig) {
+    console.log('\n🔑 GitHub Secretsを更新中...');
+    
+    try {
+      // GitHub CLIの確認
+      try {
+        execSync('gh --version', { stdio: 'pipe' });
+        console.log('✓ GitHub CLI が利用可能です');
+      } catch (error) {
+        console.log('⚠️ GitHub CLI が見つかりません。GitHub Secretsの更新をスキップします。');
+        return;
+      }
+      
+      // GitHub CLIの認証確認
+      try {
+        execSync('gh auth status', { stdio: 'pipe' });
+        console.log('✓ GitHub CLI にログイン済みです');
+      } catch (error) {
+        console.log('⚠️ GitHub CLI にログインしていません。GitHub Secretsの更新をスキップします。');
+        return;
+      }
+      
+      const secrets = {
+        DISCORD_WEBHOOK_URL: envVars.DISCORD_WEBHOOK_URL,
+        MANUAL_TRIGGER_SECRET_KEY: envVars.MANUAL_TRIGGER_SECRET_KEY,
+        ENCRYPTION_SECRET_KEY: envVars.ENCRYPTION_SECRET_KEY,
+        ENCRYPTED_REMINDERS_CONFIG: encryptedConfig
+      };
+      
+      console.log('📋 更新するGitHub Secrets:');
+      for (const [key, value] of Object.entries(secrets)) {
+        console.log(`  ${key}を更新中...`);
+        if (key === 'ENCRYPTED_REMINDERS_CONFIG') {
+          console.log(`  🔍 ${key}の値の長さ: ${value.length}`);
+          console.log(`  🔍 ${key}の値の最初の50文字: ${value.substring(0, 50)}`);
+        }
+        
+        try {
+          execSync(`gh secret set ${key}`, {
+            input: value,
+            stdio: ['pipe', 'pipe', 'pipe']
+          });
+          console.log(`  ✅ ${key}を更新完了`);
+        } catch (error) {
+          console.log(`  ⚠️ ${key}の更新に失敗: ${error.message}`);
+        }
+      }
+      
+      console.log('✓ GitHub Secretsの更新が完了しました');
+      
+    } catch (error) {
+      console.log(`⚠️ GitHub Secrets更新中にエラーが発生しました: ${error.message}`);
+      console.log('Cloudflare Workers Secretsは正常に更新されているため、デプロイを続行します。');
+    }
+  }
+
   commitAndPush() {
     try {
       console.log('Gitリポジトリの状態を確認中...');
@@ -295,7 +351,10 @@ class DeploymentManager {
       console.log(`\n5. Cloudflare Workers Secretsを${forceUpdate ? '強制' : ''}更新中...`);
       await this.updateCloudflareSecrets(envVars, encryptedConfig, forceUpdate);
 
-      console.log('\n6. GitHubにプッシュ中...');
+      console.log('\n6. GitHub Secretsを更新中...');
+      await this.updateGitHubSecrets(envVars, encryptedConfig);
+
+      console.log('\n7. GitHubにプッシュ中...');
       this.commitAndPush();
 
       console.log(`\n🎉 デプロイメントが正常に完了しました${forceUpdate ? '（強制更新）' : ''}！`);
