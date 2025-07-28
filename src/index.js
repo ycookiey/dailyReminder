@@ -274,6 +274,16 @@ async function processReminders(env) {
     console.log('- specificWeekTasks:', config.specificWeekTasks?.length || 0, '件');
     console.log('- lastWeekTasks:', config.lastWeekTasks?.length || 0, '件');
     
+    // カウントダウンの詳細をログ出力
+    if (config.countdowns && config.countdowns.length > 0) {
+      console.log('🔍 カウントダウンの詳細:');
+      config.countdowns.forEach((countdown, index) => {
+        console.log(`  ${index + 1}. 名前: "${countdown.name}", 期限: "${countdown.targetDate}", 有効: ${countdown.enabled}`);
+      });
+    } else {
+      console.log('⚠️ カウントダウンが設定されていません');
+    }
+    
     const processor = new ReminderProcessor();
     const { date, reminders } = processor.processReminders(config);
     console.log('✓ リマインダー処理完了:', { date, reminderCount: reminders.length });

@@ -52,7 +52,19 @@ class DeploymentManager {
 
     try {
       const configContent = fs.readFileSync(this.configPath, 'utf8');
-      return JSON.parse(configContent);
+      console.log('📄 reminders.jsonの文字数:', configContent.length);
+      console.log('📄 reminders.jsonの最初の100文字:', configContent.substring(0, 100));
+      
+      const parsed = JSON.parse(configContent);
+      console.log('📊 読み込み後の設定詳細:');
+      console.log('- countdowns:', parsed?.countdowns?.length || 0, '件');
+      console.log('- yearlyTasks:', parsed?.yearlyTasks?.length || 0, '件');
+      console.log('- monthlyTasks:', parsed?.monthlyTasks?.length || 0, '件');
+      console.log('- weeklyTasks:', parsed?.weeklyTasks?.length || 0, '件');
+      console.log('- specificWeekTasks:', parsed?.specificWeekTasks?.length || 0, '件');
+      console.log('- lastWeekTasks:', parsed?.lastWeekTasks?.length || 0, '件');
+      
+      return parsed;
     } catch (error) {
       throw new Error(`reminders.jsonの読み込みに失敗しました: ${error.message}`);
     }
@@ -60,6 +72,18 @@ class DeploymentManager {
 
   async encryptConfig(config, secretKey) {
     try {
+      console.log('🔍 暗号化前の設定内容を確認:');
+      console.log('- countdowns:', config?.countdowns?.length || 0, '件');
+      console.log('- yearlyTasks:', config?.yearlyTasks?.length || 0, '件');
+      console.log('- monthlyTasks:', config?.monthlyTasks?.length || 0, '件');
+      console.log('- weeklyTasks:', config?.weeklyTasks?.length || 0, '件');
+      console.log('- specificWeekTasks:', config?.specificWeekTasks?.length || 0, '件');
+      console.log('- lastWeekTasks:', config?.lastWeekTasks?.length || 0, '件');
+      
+      if (!config || Object.keys(config).length === 0) {
+        throw new Error('設定ファイルが空またはundefinedです。reminders.jsonの内容を確認してください。');
+      }
+      
       const crypto = new CryptoUtil(secretKey);
       return await crypto.encrypt(config);
     } catch (error) {
