@@ -40,11 +40,28 @@ class DecryptTester {
       console.log('  - 最終更新:', encryptedData.lastUpdated);
 
       console.log('\n2. 復号化を実行中...');
+      console.log('🔍 暗号化データの詳細:');
+      console.log('- 暗号化データ長:', encryptedData.encrypted.length);
+      console.log('- 暗号化データの最初の100文字:', encryptedData.encrypted.substring(0, 100));
+      console.log('- 秘密鍵長:', secretKey.length);
+      console.log('- 秘密鍵の最初の20文字:', secretKey.substring(0, 20));
+      
       const crypto = new CryptoUtil(secretKey);
-      const decrypted = crypto.decrypt(encryptedData.encrypted);
+      const decrypted = await crypto.decrypt(encryptedData.encrypted);
       console.log('✓ 復号化が完了しました。');
 
       console.log('\n3. 復号化結果を表示中...');
+      console.log('🔍 復号化結果の詳細:');
+      console.log('- 復号化結果の型:', typeof decrypted);
+      console.log('- 復号化結果がオブジェクトか:', typeof decrypted === 'object');
+      console.log('- キーの数:', Object.keys(decrypted || {}).length);
+      if (decrypted && typeof decrypted === 'object') {
+        console.log('- countdowns:', decrypted.countdowns?.length || 0, '件');
+        console.log('- yearlyTasks:', decrypted.yearlyTasks?.length || 0, '件');
+        console.log('- monthlyTasks:', decrypted.monthlyTasks?.length || 0, '件');
+        console.log('- weeklyTasks:', decrypted.weeklyTasks?.length || 0, '件');
+      }
+      
       console.log('復号化されたデータ:');
       console.log(JSON.stringify(decrypted, null, 2));
 
@@ -60,7 +77,10 @@ class DecryptTester {
 
 if (require.main === module) {
   const tester = new DecryptTester();
-  tester.testDecrypt();
+  tester.testDecrypt().catch(error => {
+    console.error('予期しないエラー:', error);
+    process.exit(1);
+  });
 }
 
 module.exports = { DecryptTester };

@@ -260,12 +260,21 @@ async function processReminders(env) {
     
     if (env.ENCRYPTED_REMINDERS_CONFIG) {
       console.log('🔧 環境変数から暗号化設定を取得');
+      console.log('🔍 復号化前の詳細:');
+      console.log('- 暗号化データ長:', env.ENCRYPTED_REMINDERS_CONFIG.length);
+      console.log('- 暗号化データの最初の100文字:', env.ENCRYPTED_REMINDERS_CONFIG.substring(0, 100));
+      console.log('- 秘密鍵長:', env.ENCRYPTION_SECRET_KEY.length);
+      console.log('- 秘密鍵の最初の20文字:', env.ENCRYPTION_SECRET_KEY.substring(0, 20));
+      
       config = await WorkerCrypto.decrypt(env.ENCRYPTED_REMINDERS_CONFIG, env.ENCRYPTION_SECRET_KEY);
     } else {
       console.log('🔧 デフォルトの暗号化設定を取得');
       config = await WorkerCrypto.decrypt(ENCRYPTED_CONFIG, env.ENCRYPTION_SECRET_KEY);
     }
     console.log('✓ 設定の復号化完了');
+    console.log('🔍 復号化後の詳細:');
+    console.log('- 復号化結果の型:', typeof config);
+    console.log('- キーの数:', Object.keys(config || {}).length);
     console.log('📊 復号化した設定の詳細:');
     console.log('- countdowns:', config.countdowns?.length || 0, '件');
     console.log('- yearlyTasks:', config.yearlyTasks?.length || 0, '件');

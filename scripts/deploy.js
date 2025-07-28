@@ -84,10 +84,99 @@ class DeploymentManager {
         throw new Error('設定ファイルが空またはundefinedです。reminders.jsonの内容を確認してください。');
       }
       
+      // 暗号化前の設定を保存（検証用）
+      const originalConfig = JSON.parse(JSON.stringify(config));
+      
+      console.log('\n🔐 設定を暗号化中...');
       const crypto = new CryptoUtil(secretKey);
-      return await crypto.encrypt(config);
+      const encryptedData = await crypto.encrypt(config);
+      console.log('✓ 暗号化完了');
+      
+      console.log('\n🔍 暗号化結果を検証中...');
+      console.log('- 暗号化データ長:', encryptedData.length);
+      console.log('- 暗号化データの最初の100文字:', encryptedData.substring(0, 100));
+      
+      // 暗号化→復号化のラウンドトリップテスト
+      console.log('🔄 復号化テスト実行中...');
+      const decryptedConfig = await crypto.decrypt(encryptedData);
+      console.log('✓ 復号化テスト完了');
+      
+      // 設定内容の一致を検証
+      console.log('📊 設定内容の一致を検証中...');
+      const isValid = await this.validateConfigConsistency(originalConfig, decryptedConfig);
+      
+      if (!isValid) {
+        console.error('❌ 暗号化前後で設定内容が一致しません！');
+        console.error('元の設定:', JSON.stringify(originalConfig, null, 2));
+        console.error('復号化後の設定:', JSON.stringify(decryptedConfig, null, 2));
+        throw new Error('暗号化前後の設定内容が一致しません。暗号化処理に問題があります。');
+      }
+      
+      console.log('✅ 設定内容の一致を確認しました');
+      return encryptedData;
+      
     } catch (error) {
       throw new Error(`設定ファイルの暗号化に失敗しました: ${error.message}`);
+    }
+  }
+
+  async validateConfigConsistency(originalConfig, decryptedConfig) {
+    try {
+      // 基本的なフィールドの存在確認
+      const requiredFields = ['countdowns', 'yearlyTasks', 'monthlyTasks', 'weeklyTasks', 'specificWeekTasks', 'lastWeekTasks'];
+      
+      for (const field of requiredFields) {
+        if (!decryptedConfig.hasOwnProperty(field)) {
+          console.error(`❌ 必須フィールド '${field}' が復号化後に存在しません`);
+          return false;
+        }
+      }
+      
+      // 配列の長さを比較
+      const fieldsToCompare = [
+        { name: 'countdowns', original: originalConfig.countdowns?.length || 0, decrypted: decryptedConfig.countdowns?.length || 0 },
+        { name: 'yearlyTasks', original: originalConfig.yearlyTasks?.length || 0, decrypted: decryptedConfig.yearlyTasks?.length || 0 },
+        { name: 'monthlyTasks', original: originalConfig.monthlyTasks?.length || 0, decrypted: decryptedConfig.monthlyTasks?.length || 0 },
+        { name: 'weeklyTasks', original: originalConfig.weeklyTasks?.length || 0, decrypted: decryptedConfig.weeklyTasks?.length || 0 },
+        { name: 'specificWeekTasks', original: originalConfig.specificWeekTasks?.length || 0, decrypted: decryptedConfig.specificWeekTasks?.length || 0 },
+        { name: 'lastWeekTasks', original: originalConfig.lastWeekTasks?.length || 0, decrypted: decryptedConfig.lastWeekTasks?.length || 0 }
+      ];
+      
+      console.log('📋 各フィールドの比較:');
+      for (const field of fieldsToCompare) {
+        console.log(`- ${field.name}: 元=${field.original}件, 復号化後=${field.decrypted}件`);
+        if (field.original !== field.decrypted) {
+          console.error(`❌ ${field.name}の件数が一致しません！（元: ${field.original}, 復号化後: ${field.decrypted}）`);
+          return false;
+        }
+      }
+      
+      // カウントダウンの詳細比較（重要）
+      if (originalConfig.countdowns && originalConfig.countdowns.length > 0) {
+        console.log('🔍 カウントダウンの詳細比較:');
+        for (let i = 0; i < originalConfig.countdowns.length; i++) {
+          const original = originalConfig.countdowns[i];
+          const decrypted = decryptedConfig.countdowns[i];
+          
+          console.log(`  ${i + 1}. 元: "${original.name}" -> 復号化後: "${decrypted.name}"`);
+          
+          if (original.name !== decrypted.name || 
+              original.targetDate !== decrypted.targetDate || 
+              original.enabled !== decrypted.enabled) {
+            console.error(`❌ カウントダウン ${i + 1} の内容が一致しません！`);
+            console.error('  元:', original);
+            console.error('  復号化後:', decrypted);
+            return false;
+          }
+        }
+      }
+      
+      console.log('✅ すべてのフィールドが一致しています');
+      return true;
+      
+    } catch (error) {
+      console.error('❌ 設定検証中にエラーが発生しました:', error.message);
+      return false;
     }
   }
 
