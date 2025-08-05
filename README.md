@@ -99,7 +99,11 @@ GitHubリポジトリの Settings > Secrets and variables > Actions で以下を
 ## デプロイ
 
 ```bash
+# 通常のデプロイ
 npm run deploy
+
+# Cloudflare Workers Secretsを強制更新してデプロイ
+npm run deploy:force
 ```
 
 このコマンドで以下の処理が自動実行されます：
@@ -109,6 +113,8 @@ npm run deploy
 3. Cloudflare Workers Secrets の更新
 4. GitHubへのプッシュ
 5. GitHub Actions による自動デプロイ
+
+**注意**: `deploy:force` は既存のCloudflare Workers Secretsを強制的に更新します。通常は `npm run deploy` を使用してください。
 
 ## 本番環境テスト
 
@@ -152,9 +158,11 @@ curl -X POST https://your-worker.your-subdomain.workers.dev/manual-trigger \
 ## スクリプト
 
 - `npm run deploy` - フルデプロイプロセスの実行
+- `npm run deploy:force` - Cloudflare Workers Secretsを強制更新してデプロイ
 - `npm run encrypt` - 設定ファイルの暗号化のみ実行
 - `npm run validate` - 設定ファイルの検証
 - `npm run setup-secrets` - GitHub Secretsの自動設定
+- `npm run force-update-secrets` - Cloudflare Workers Secretsの強制更新
 - `npm run test-production` - 本番環境リマインダーテスト実行
 - `npm run dev` - ローカル開発モード
 - `npm test` - テストの実行
@@ -174,6 +182,7 @@ curl -X POST https://your-worker.your-subdomain.workers.dev/manual-trigger \
 3. **デプロイエラー**
    - GitHub Secretsが正しく設定されているか確認
    - Cloudflare API トークンの権限を確認
+   - Cloudflare Workers Secretsの更新に失敗した場合は `npm run force-update-secrets` を実行
 
 ### ログの確認
 
