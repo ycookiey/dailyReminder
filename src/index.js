@@ -264,7 +264,6 @@ async function processReminders(env) {
       console.log('- 暗号化データ長:', env.ENCRYPTED_REMINDERS_CONFIG.length);
       console.log('- 暗号化データの最初の100文字:', env.ENCRYPTED_REMINDERS_CONFIG.substring(0, 100));
       console.log('- 秘密鍵長:', env.ENCRYPTION_SECRET_KEY.length);
-      console.log('- 秘密鍵の最初の20文字:', env.ENCRYPTION_SECRET_KEY.substring(0, 20));
       
       config = await WorkerCrypto.decrypt(env.ENCRYPTED_REMINDERS_CONFIG, env.ENCRYPTION_SECRET_KEY);
     } else {
