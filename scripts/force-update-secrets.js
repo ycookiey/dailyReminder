@@ -66,7 +66,6 @@ function deleteSecret(secretName) {
 }
 
 function createSecret(secretName, value) {
-  // 一時ファイルを作成して値を保存
   const tempFile = path.join(__dirname, `.temp_${secretName}_${Date.now()}.txt`);
   
   try {
@@ -83,7 +82,6 @@ function createSecret(secretName, value) {
     
     return result;
   } finally {
-    // 一時ファイルを削除
     if (fs.existsSync(tempFile)) {
       fs.unlinkSync(tempFile);
     }
@@ -96,10 +94,8 @@ function forceUpdateSecret(secretName, value, description) {
   console.log(`   値の長さ: ${value.length}文字`);
   console.log(`   値の最初の50文字: ${value.substring(0, 50)}...`);
   
-  // ステップ1: 既存のシークレットを削除
   deleteSecret(secretName);
   
-  // ステップ2: 新しいシークレットを作成
   createSecret(secretName, value);
   
   console.log(`✅ ${description}の強制更新完了`);
@@ -109,10 +105,8 @@ async function main() {
   try {
     console.log('🚀 Cloudflare Workers Secrets 強制更新を開始します...\n');
     
-    // 環境変数を読み込み
     loadEnvFile();
     
-    // 必要な環境変数をチェック
     const requiredEnvVars = [
       'DISCORD_WEBHOOK_URL',
       'MANUAL_TRIGGER_SECRET_KEY',
@@ -125,7 +119,6 @@ async function main() {
       }
     }
     
-    // 暗号化ファイルを読み込み
     const encryptedFilePath = path.join(process.cwd(), 'encrypted-reminders.json');
     if (!fs.existsSync(encryptedFilePath)) {
       throw new Error('encrypted-reminders.json が見つかりません。先に暗号化を実行してください。');
@@ -140,7 +133,6 @@ async function main() {
     console.log(`- ENCRYPTION_SECRET_KEY (${process.env.ENCRYPTION_SECRET_KEY.length}文字)`);
     console.log(`- ENCRYPTED_REMINDERS_CONFIG (${encryptedReminders.length}文字)`);
     
-    // 各シークレットを強制更新
     forceUpdateSecret('DISCORD_WEBHOOK_URL', process.env.DISCORD_WEBHOOK_URL, 'Discord Webhook URL');
     forceUpdateSecret('MANUAL_TRIGGER_SECRET_KEY', process.env.MANUAL_TRIGGER_SECRET_KEY, '手動実行シークレットキー');
     forceUpdateSecret('ENCRYPTION_SECRET_KEY', process.env.ENCRYPTION_SECRET_KEY, '暗号化シークレットキー');
@@ -164,7 +156,6 @@ async function main() {
   }
 }
 
-// オプション解析
 function parseArgs() {
   const args = process.argv.slice(2);
   

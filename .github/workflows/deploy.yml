@@ -25,7 +25,6 @@ jobs:
 
     - name: Validate encrypted config schema
       run: |
-        # 設定ファイルの検証スクリプトを実行
         npm run validate
       env:
         ENCRYPTION_SECRET_KEY: ${{ secrets.ENCRYPTION_SECRET_KEY }}
@@ -80,7 +79,6 @@ jobs:
         if [ -n "${{ secrets.WORKER_URL }}" ]; then
           echo "🧪 デプロイ後の動作確認を実行中..."
           
-          # 最大3回まで再試行
           for attempt in 1 2 3; do
             echo "試行 $attempt/3 - 10秒待機中..."
             sleep 10
@@ -89,7 +87,6 @@ jobs:
               echo "✅ ヘルスチェック成功 (試行: $attempt)"
               echo "📊 レスポンス: $response"
               
-              # バージョンが含まれているかチェック
               if echo "$response" | grep -q '"version"'; then
                 echo "✅ 最新バージョンが反映されています"
                 break

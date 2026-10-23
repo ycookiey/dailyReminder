@@ -10,14 +10,12 @@ class WorkerCrypto {
       console.log('暗号化データ長:', encryptedData.length);
       console.log('秘密鍵長:', secretKey.length);
       console.log('暗号化データの最初の50文字:', encryptedData.substring(0, 50));
-      
-      // crypto-js形式かどうかを判定（Base64デコード後にSalted__で始まるかチェック）
+
       if (encryptedData.startsWith('U2FsdGVkX1')) {
         console.log('🔧 crypto-js形式を検出、互換復号化を実行');
         return await this.decryptCryptoJSFormat(encryptedData, secretKey);
       }
-      
-      // Web Crypto API形式の復号化処理（新しい形式）
+
       console.log('🔧 Web Crypto API形式で復号化');
       const keyBuffer = new TextEncoder().encode(secretKey.padEnd(32, '0').slice(0, 32));
       console.log('キーバッファ長:', keyBuffer.length);
@@ -64,29 +62,24 @@ class WorkerCrypto {
   static async decryptCryptoJSFormat(encryptedData, secretKey) {
     try {
       console.log('🔓 crypto-js互換復号化開始');
-      
-      // Base64デコード
+
       const encryptedBuffer = new Uint8Array(
         atob(encryptedData).split('').map(c => c.charCodeAt(0))
       );
       console.log('復号化バッファ長:', encryptedBuffer.length);
-      
-      // "Salted__" (8バイト) を確認
+
       const salted = new TextDecoder().decode(encryptedBuffer.slice(0, 8));
       if (salted !== 'Salted__') {
         throw new Error('crypto-js形式ではありません');
       }
-      
-      // Salt (8バイト) を抽出
+
       const salt = encryptedBuffer.slice(8, 16);
       const ciphertext = encryptedBuffer.slice(16);
       console.log('Salt長:', salt.length, 'Ciphertext長:', ciphertext.length);
-      
-      // PBKDF2でキーとIVを導出（crypto-js互換）
+
       const keyIv = await this.deriveKeyAndIV(secretKey, salt);
       console.log('✓ キーとIVの導出完了');
-      
-      // AES-CBCで復号化
+
       const key = await crypto.subtle.importKey(
         'raw',
         keyIv.key,
@@ -119,12 +112,10 @@ class WorkerCrypto {
   }
 
   static async deriveKeyAndIV(password, salt) {
-    // crypto-js互換のキー導出（OpenSSLのEVP_BytesToKey相当）
     console.log('🔑 キー導出開始');
     const passwordBytes = new TextEncoder().encode(password);
     const saltBytes = salt;
-    
-    // MD5互換の簡易実装（crypto-jsと同じアルゴリズム）
+
     const md5 = await this.simpleMD5(new Uint8Array([...passwordBytes, ...saltBytes]));
     console.log('MD5-1 完了、長さ:', md5.length);
     
@@ -134,25 +125,23 @@ class WorkerCrypto {
     const md5_3 = await this.simpleMD5(new Uint8Array([...md5_2, ...passwordBytes, ...saltBytes]));
     console.log('MD5-3 完了、長さ:', md5_3.length);
     
-    // キー（32バイト）とIV（16バイト）を構築
     const keyMaterial = new Uint8Array(48);
-    keyMaterial.set(md5, 0);           // 最初の16バイト
-    keyMaterial.set(md5_2, 16);        // 次の16バイト  
-    keyMaterial.set(md5_3, 32);        // 最後の16バイト
+    keyMaterial.set(md5, 0);
+    keyMaterial.set(md5_2, 16);
+    keyMaterial.set(md5_3, 32);
     
     console.log('✓ キー導出完了、導出データ長:', keyMaterial.length);
     
     return {
-      key: keyMaterial.slice(0, 32),  // 256-bit key
-      iv: keyMaterial.slice(32, 48)   // 128-bit IV
+      key: keyMaterial.slice(0, 32),
+      iv: keyMaterial.slice(32, 48)
     };
   }
 
   static async simpleMD5(data) {
-    // MD5の代替としてSHA-1を使用し、16バイトに切り詰め
-    // これはcrypto-jsとの完全互換性のための近似
+    // TODO: crypto-jsの鍵の導出(OpenSSLのEVP_BytesToKey)はMD5を使うが、ここではSHA-1の先頭16バイトで代えているため、crypto-jsで暗号化した設定は復号できない
     const sha1Hash = await crypto.subtle.digest('SHA-1', data);
-    return new Uint8Array(sha1Hash).slice(0, 16); // MD5サイズ（16バイト）に切り詰め
+    return new Uint8Array(sha1Hash).slice(0, 16);
   }
 
   static async encrypt(data, secretKey) {
@@ -281,8 +270,7 @@ async function processReminders(env) {
     console.log('- weeklyTasks:', config.weeklyTasks?.length || 0, '件');
     console.log('- specificWeekTasks:', config.specificWeekTasks?.length || 0, '件');
     console.log('- lastWeekTasks:', config.lastWeekTasks?.length || 0, '件');
-    
-    // カウントダウンの詳細をログ出力
+
     if (config.countdowns && config.countdowns.length > 0) {
       console.log('🔍 カウントダウンの詳細:');
       config.countdowns.forEach((countdown, index) => {
@@ -315,7 +303,7 @@ async function processReminders(env) {
     });
     
     try {
-      // エラー通知の無限ループを防ぐ（Discord関連エラーの場合は通知しない）
+      // Discordへの送信で起きたエラーは、Discordへ通知しても同じ理由で失敗するため通知しない
       if (!error.message.includes('Discord') && !error.message.includes('レート制限')) {
         console.log('🔔 システムエラーをDiscordに通知します');
         const notifier = new DiscordNotifier(env.DISCORD_WEBHOOK_URL);

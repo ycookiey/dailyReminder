@@ -140,7 +140,6 @@ class SecretsManager {
         }
       }
 
-      // オプショナルなSecretsの設定（値がある場合のみ）
       for (const secretKey of this.optionalSecrets) {
         if (envVars[secretKey]) {
           await this.setSecret(secretKey, envVars[secretKey]);
@@ -153,7 +152,6 @@ class SecretsManager {
         console.log('.envファイルを確認して、不足している値を追加してください。');
       }
 
-      // 暗号化された設定ファイルがあれば、それもSecretsに追加
       const encryptedConfigPath = path.join(process.cwd(), 'encrypted-reminders.json');
       if (fs.existsSync(encryptedConfigPath)) {
         console.log('\n4. 暗号化された設定ファイルをSecretsに追加中...');

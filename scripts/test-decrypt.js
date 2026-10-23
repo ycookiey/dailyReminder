@@ -4,7 +4,6 @@ const fs = require('fs');
 const path = require('path');
 const { CryptoUtil } = require('../src/crypto.js');
 
-// 環境変数を手動で読み込み
 const envPath = path.join(process.cwd(), '.env');
 if (fs.existsSync(envPath)) {
   const envContent = fs.readFileSync(envPath, 'utf8');
