@@ -1,9 +1,9 @@
-# Environment variables
+# 環境変数
 .env
 .env.local
 .env.production
 
-# Configuration files
+# 平文のリマインダーの設定
 reminders.json
 
 # Node.js
@@ -25,10 +25,10 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Logs
+# ログ
 logs/
 *.log
 
-# Temporary files
+# 一時ファイル
 *.tmp
 *.temp

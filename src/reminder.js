@@ -1,6 +1,6 @@
 class ReminderProcessor {
   constructor() {
-    this.JST_OFFSET = 9 * 60 * 60 * 1000; // JST is UTC+9
+    this.JST_OFFSET = 9 * 60 * 60 * 1000;
   }
 
   getJSTDate() {
