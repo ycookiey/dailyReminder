@@ -38,12 +38,11 @@ class ProductionTester {
   }
 
   async getWorkerUrl() {
-    // 環境変数から取得を試行
     if (process.env.WORKER_URL) {
       return process.env.WORKER_URL;
     }
 
-    // GitHub Secretsから取得を試行
+    // TODO: ghにはシークレットの値を読むコマンドが無いため、この取得は常に失敗する
     try {
       const { execSync } = require('child_process');
       const result = execSync('gh secret get WORKER_URL', { 
@@ -54,10 +53,8 @@ class ProductionTester {
         return result.trim();
       }
     } catch (error) {
-      // GitHub CLI が使用できない、またはSecretが設定されていない
     }
 
-    // Cloudflare Workers のデフォルトURL形式を試行
     const workerName = 'daily-reminder';
     console.log(`\n⚠️ Worker URLが設定されていません。`);
     console.log(`一般的なCloudflare Workers URLは以下の形式です:`);
@@ -84,7 +81,6 @@ class ProductionTester {
           console.log(`📊 ステータス: ${data.status}`);
           console.log(`⏰ タイムスタンプ: ${data.timestamp}`);
           
-          // バージョン情報の確認
           if (data.version) {
             console.log(`🔖 バージョン: ${data.version}`);
             console.log('✅ 最新バージョンが反映されています');
@@ -162,12 +158,10 @@ class ProductionTester {
     try {
       console.log('🎯 Daily Reminder 本番環境テストを開始します...\n');
 
-      // Worker URL取得
       console.log('1. Worker URL取得中...');
       const workerUrl = await this.getWorkerUrl();
       console.log(`✓ Worker URL: ${workerUrl}`);
 
-      // ヘルスチェック
       if (!options.skipHealthCheck) {
         const healthOk = await this.testWorkerHealth(workerUrl);
         if (!healthOk && !options.force) {
@@ -175,7 +169,6 @@ class ProductionTester {
         }
       }
 
-      // リマインダー実行
       const result = await this.triggerReminder(workerUrl, this.secretKey);
 
       console.log('\n🎉 本番環境テストが正常に完了しました！');

@@ -1,7 +1,12 @@
 {
   "name": "daily-reminder",
   "version": "1.0.0",
-  "description": "Daily reminder system for Discord using Cloudflare Workers",
+  "private": true,
+  "description": "毎日決まった時刻に、当日のリマインダーをDiscordのチャンネルへ送るCloudflare Workersのアプリ",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ycookiey/dailyReminder.git"
+  },
   "main": "src/index.js",
   "scripts": {
     "dev": "wrangler dev",
@@ -34,6 +39,6 @@
     "cron",
     "automation"
   ],
-  "author": "",
+  "author": "ycookiey",
   "license": "MIT"
 }

@@ -84,7 +84,6 @@ class DeploymentManager {
         throw new Error('設定ファイルが空またはundefinedです。reminders.jsonの内容を確認してください。');
       }
       
-      // 暗号化前の設定を保存（検証用）
       const originalConfig = JSON.parse(JSON.stringify(config));
       
       console.log('\n🔐 設定を暗号化中...');
@@ -96,12 +95,10 @@ class DeploymentManager {
       console.log('- 暗号化データ長:', encryptedData.length);
       console.log('- 暗号化データの最初の100文字:', encryptedData.substring(0, 100));
       
-      // 暗号化→復号化のラウンドトリップテスト
       console.log('🔄 復号化テスト実行中...');
       const decryptedConfig = await crypto.decrypt(encryptedData);
       console.log('✓ 復号化テスト完了');
       
-      // 設定内容の一致を検証
       console.log('📊 設定内容の一致を検証中...');
       const isValid = await this.validateConfigConsistency(originalConfig, decryptedConfig);
       
@@ -122,7 +119,6 @@ class DeploymentManager {
 
   async validateConfigConsistency(originalConfig, decryptedConfig) {
     try {
-      // 基本的なフィールドの存在確認
       const requiredFields = ['countdowns', 'yearlyTasks', 'monthlyTasks', 'weeklyTasks', 'specificWeekTasks', 'lastWeekTasks'];
       
       for (const field of requiredFields) {
@@ -132,7 +128,6 @@ class DeploymentManager {
         }
       }
       
-      // 配列の長さを比較
       const fieldsToCompare = [
         { name: 'countdowns', original: originalConfig.countdowns?.length || 0, decrypted: decryptedConfig.countdowns?.length || 0 },
         { name: 'yearlyTasks', original: originalConfig.yearlyTasks?.length || 0, decrypted: decryptedConfig.yearlyTasks?.length || 0 },
@@ -151,7 +146,6 @@ class DeploymentManager {
         }
       }
       
-      // カウントダウンの詳細比較（重要）
       if (originalConfig.countdowns && originalConfig.countdowns.length > 0) {
         console.log('🔍 カウントダウンの詳細比較:');
         for (let i = 0; i < originalConfig.countdowns.length; i++) {
@@ -199,7 +193,6 @@ class DeploymentManager {
         }
         
         if (forceUpdate) {
-          // 強制更新: 既存のシークレットを削除してから再作成
           try {
             console.log(`    🗑️ 既存の${key}を削除中...`);
             execSync(`npx wrangler secret delete ${key}`, {
@@ -207,16 +200,14 @@ class DeploymentManager {
             });
             console.log(`    ✓ ${key}を削除しました`);
           } catch (deleteError) {
-            // 削除に失敗（シークレットが存在しない場合など）は無視
+            // シークレットがまだ無いときも削除は失敗するため、失敗は無視する
             console.log(`    ⚠️ ${key}の削除をスキップ（存在しない可能性）`);
           }
           
-          // 少し待機してから再作成
           console.log(`    ⏳ 1秒待機中...`);
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
         
-        // シークレットを作成/更新
         console.log(`    📝 ${key}を作成中...`);
         execSync(`npx wrangler secret put ${key}`, {
           input: value,
@@ -244,7 +235,6 @@ class DeploymentManager {
     console.log('\n🔑 GitHub Secretsを更新中...');
     
     try {
-      // GitHub CLIの確認
       try {
         execSync('gh --version', { stdio: 'pipe' });
         console.log('✓ GitHub CLI が利用可能です');
@@ -253,7 +243,6 @@ class DeploymentManager {
         return;
       }
       
-      // GitHub CLIの認証確認
       try {
         execSync('gh auth status', { stdio: 'pipe' });
         console.log('✓ GitHub CLI にログイン済みです');

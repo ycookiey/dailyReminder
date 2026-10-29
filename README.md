@@ -1,207 +1,120 @@
-# Daily Reminder System
+# dailyReminder
 
-毎日定刻にDiscordの特定チャンネルへリマインダーを自動通知するシステムです。Cloudflare Workersで動作し、暗号化された設定ファイルで安全にリマインダーを管理できます。
+毎日決まった時刻に、当日のリマインダーをDiscordのチャンネルへ送るCloudflare Workersのアプリ。リマインダーの設定は暗号化して、Workerのシークレットに保存する。
 
 ## 特徴
 
-- **毎日 午前3時（日本時間）** に自動実行
-- **Discord Webhook** による通知
-- **暗号化された設定ファイル** でセキュアな設定管理
-- **GitHub Actions** による自動デプロイ
-- **手動実行機能** でデバッグ・テストが可能
-- 6種類のリマインダータイプをサポート
+- 毎日、日本時間の午前3時に、当日が対象のリマインダーをDiscordのWebhookで送る。対象のリマインダーが無い日は「本日のリマインド事項はありません」を送る
+- 繰り返しは6種類: カウントダウン・毎年・毎月・毎週・第n週・最終週
+- `/manual-trigger`にPOSTすると、実行した日の分をすぐに送る
+- GitHub Actionsで、`main`へのpushのたびにデプロイする
 
-## リマインダータイプ
+## 必要なもの
 
-### 1. カウントダウン
-指定した目標日に向けて、残日数を毎日通知。目標日を過ぎたリマインダーは自動的に通知対象外。
-
-### 2. 毎年のタスク
-毎年決まった日付にタスクや記念日を通知。
-
-### 3. 毎月のタスク
-毎月決まった日にタスクを通知。指定した日が存在しない月では、その月の最終日に通知。
-
-### 4. 毎週のタスク
-毎週決まった曜日にタスクを通知。
-
-### 5. 特定週のタスク
-「第n週目のm曜日」といった指定でタスクを通知。指定した週が存在しない月では、その月の最終の該当曜日に通知。
-
-### 6. 最終週のタスク
-「毎月最終金曜日」のように、月の最終週の特定の曜日にタスクを通知。
+- Cloudflareのアカウント
+- 自分のGitHubの空のリポジトリ
+- 送り先のチャンネルのWebhook URL
+- Node.js 20.18.1以上と、ログイン済みのGitHub CLI(`gh`)
 
 ## セットアップ
 
-### 1. 必要なアカウント・サービス
+1. cloneして、pushする先を自分のリポジトリに変え、依存を入れる
 
-- [Cloudflare](https://cloudflare.com) アカウント
-- [GitHub](https://github.com) アカウント
-- Discord Webhook URL
+   ```bash
+   git clone https://github.com/ycookiey/dailyReminder.git
+   cd dailyReminder
+   git remote set-url origin <自分のリポジトリのURL>
+   npm install
+   ```
 
-### 2. リポジトリの準備
+2. `.env.example`を`.env`に、`reminders.example.json`を`reminders.json`にコピーする。`.env`に次の値を書く
 
-```bash
-git clone <this-repository>
-cd daily-reminder
-npm install
-```
+   - `DISCORD_WEBHOOK_URL`: 送り先のWebhook URL
+   - `MANUAL_TRIGGER_SECRET_KEY`: 手動で送るときの認証に使う、推測されにくい文字列
+   - `ENCRYPTION_SECRET_KEY`: 設定の暗号化の鍵。`npm run encrypt`を`ENCRYPTION_SECRET_KEY`の環境変数なしで実行すると、新しい鍵を表示する
+   - `CLOUDFLARE_API_TOKEN`・`CLOUDFLARE_ACCOUNT_ID`: GitHub Actionsからデプロイするための、CloudflareのAPIトークンとアカウントID
+   - `WORKER_URL`: デプロイした後のWorkerのURL。最初のデプロイまでは空のままにする
 
-### 3. 環境変数の設定
+3. `npx wrangler login`でCloudflareにログインし、`npm run setup-secrets`で`.env`の値をGitHubのリポジトリのシークレットに登録する
+4. `npm run deploy`を実行する。`reminders.json`を暗号化して`encrypted-reminders.json`に保存し、Workerのシークレットと、GitHubのリポジトリのシークレットを更新してから、commitしてpushする。pushを受けて、GitHub ActionsがWorkerをデプロイする
+5. 最初のデプロイの後、`.env`に`WORKER_URL`を書き、もう一度`npm run setup-secrets`を実行する。`WORKER_URL`を登録すると、GitHub Actionsはデプロイの後に`/health`の応答を確認する
 
-`.env.example` を `.env` にコピーして編集：
+## 使い方
 
-```bash
-cp .env.example .env
-```
+### リマインダーの設定
 
-```env
-DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
-MANUAL_TRIGGER_SECRET_KEY="your-strong-secret-key-for-manual-trigger"
-ENCRYPTION_SECRET_KEY="your-strong-encryption-key-32-chars-long"
-```
+`reminders.json`に書く。形式は`schemas/reminders.schema.json`、例は`reminders.example.json`を参照。書き換えた後は`npm run deploy`で反映する。
 
-### 4. リマインダー設定
+| キー | 送る日 | 必須の項目 |
+|---|---|---|
+| `countdowns` | `targetDate`の前日まで毎日。下の注意を参照 | `name`・`targetDate` |
+| `yearlyTasks` | 毎年`month`月`day`日 | `name`・`month`・`day` |
+| `monthlyTasks` | 毎月`day`日。`day`日が無い月は月末 | `name`・`day` |
+| `weeklyTasks` | `dayOfWeek`の配列にある曜日 | `name`・`dayOfWeek` |
+| `specificWeekTasks` | 毎月`week`回目の`dayOfWeek`曜日。`week`回目が無い月は最後の`dayOfWeek`曜日 | `name`・`week`・`dayOfWeek` |
+| `lastWeekTasks` | 毎月最後の`dayOfWeek`曜日 | `name`・`dayOfWeek` |
 
-`reminders.example.json` を `reminders.json` にコピーして編集：
+- 6つのキーはすべて書く。使わないキーは空の配列`[]`にする。キーが1つでも無いと、`npm run deploy`は暗号化の検証で失敗する
+- `targetDate`は`2025-03-31`の形で書く
+- `dayOfWeek`は0が日曜、6が土曜
+- `enabled`: `false`にすると送らない。既定は`true`
+- `message`: 送る文。省くと`name`から作った既定の文を送る。`countdowns`では、`{days}`を残りの日数に置き換える
 
-```bash
-cp reminders.example.json reminders.json
-```
+### 手動で送る
 
-### 5. Cloudflare Workers の設定
-
-```bash
-# Wranglerにログイン
-npx wrangler login
-```
-
-### 6. GitHub Secrets の設定
-
-#### 自動設定（推奨）
-
-```bash
-# GitHub CLI (gh) がインストール済みで、認証が完了している場合
-npm run setup-secrets
-```
-
-#### 手動設定
-
-GitHubリポジトリの Settings > Secrets and variables > Actions で以下を設定：
-
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`  
-- `DISCORD_WEBHOOK_URL`
-- `MANUAL_TRIGGER_SECRET_KEY`
-- `ENCRYPTION_SECRET_KEY`
-- `WORKER_URL` (デプロイ後のWorker URL)
-
-## デプロイ
+`.env`に`WORKER_URL`を書いてから実行する。
 
 ```bash
-# 通常のデプロイ
-npm run deploy
-
-# Cloudflare Workers Secretsを強制更新してデプロイ
-npm run deploy:force
-```
-
-このコマンドで以下の処理が自動実行されます：
-
-1. `.env` ファイルの読み込み
-2. `reminders.json` の暗号化
-3. Cloudflare Workers Secrets の更新
-4. GitHubへのプッシュ
-5. GitHub Actions による自動デプロイ
-
-**注意**: `deploy:force` は既存のCloudflare Workers Secretsを強制的に更新します。通常は `npm run deploy` を使用してください。
-
-## 本番環境テスト
-
-### 本番リマインダーの手動実行
-
-デプロイ済みのCloudflare Workerを手動でテスト実行できます：
-
-```bash
-# 本番環境フルテスト（ヘルスチェック + リマインダー実行）
 npm run test-production
-
-# ヘルスチェックをスキップしてリマインダー実行
-npm run test-production -- --skip-health
-
-# ヘルスチェック失敗でも強制実行
-npm run test-production -- --force
-
-# ヘルプ表示
-npm run test-production -- --help
 ```
 
-**テスト内容:**
-1. Worker URL自動取得（.env または GitHub Secrets から）
-2. Worker ヘルスチェック（`/health` エンドポイント）
-3. 本番リマインダー実行（今日の日付で実行）
-4. 実行結果表示とDiscord通知確認案内
-
-**必要な設定:**
-- `MANUAL_TRIGGER_SECRET_KEY`: .envファイルに設定済み
-- `WORKER_URL`: .envまたはGitHub Secretsに設定（オプション、未設定時は案内表示）
-
-### 直接cURLでの実行
-
-スクリプトを使わずに直接実行する場合：
+`curl`で送る場合:
 
 ```bash
-curl -X POST https://your-worker.your-subdomain.workers.dev/manual-trigger \
-  -H "Authorization: Bearer your-manual-trigger-secret-key"
+curl -X POST https://daily-reminder.<サブドメイン>.workers.dev/manual-trigger \
+  -H "Authorization: Bearer <MANUAL_TRIGGER_SECRET_KEY>"
 ```
 
-## スクリプト
-
-- `npm run deploy` - フルデプロイプロセスの実行
-- `npm run deploy:force` - Cloudflare Workers Secretsを強制更新してデプロイ
-- `npm run encrypt` - 設定ファイルの暗号化のみ実行
-- `npm run validate` - 設定ファイルの検証
-- `npm run setup-secrets` - GitHub Secretsの自動設定
-- `npm run force-update-secrets` - Cloudflare Workers Secretsの強制更新
-- `npm run test-production` - 本番環境リマインダーテスト実行
-- `npm run dev` - ローカル開発モード
-- `npm test` - テストの実行
-
-## トラブルシューティング
-
-### よくある問題
-
-1. **暗号化キーエラー**
-   - `ENCRYPTION_SECRET_KEY` が正しく設定されているか確認
-   - キーは32文字以上である必要があります
-
-2. **Discord通知が届かない**
-   - Webhook URLが正しいか確認
-   - Discordサーバーの権限設定を確認
-
-3. **デプロイエラー**
-   - GitHub Secretsが正しく設定されているか確認
-   - Cloudflare API トークンの権限を確認
-   - Cloudflare Workers Secretsの更新に失敗した場合は `npm run force-update-secrets` を実行
-
-### ログの確認
+### ログ
 
 ```bash
-# Cloudflare Workers のログを確認
 npx wrangler tail
-
-# GitHub Actions のログはリポジトリのActionsタブで確認
 ```
 
-## 設定ファイルの例
+## 注意
 
-詳細な設定例は `reminders.example.json` を参照してください。
+- 当日かどうかは日本時間の日付で決める。送る時刻は`wrangler.toml`の`crons`で変更できる。`crons`の時刻はUTCで書く
+- カウントダウンの残りの日数は、実際より1日少なく出る。目標日の前日に「本日が〜です！」を送り、目標日の当日は送らない
+- `npm run deploy`は`encrypted-reminders.json`と`src/`の変更をcommitし、`origin`の`main`にpushする。公開のリポジトリでは、コードと同じく暗号化した設定も公開される。このリポジトリをGitHubでforkした場合、forkは非公開にできない
+- リポジトリにある`encrypted-reminders.json`は作者の設定で、自分の鍵では復号できない。最初の`npm run deploy`より前にpushすると、GitHub Actionsの設定の検証で失敗する
+- `ENCRYPTION_SECRET_KEY`は先頭の32文字だけを使う。32文字より短い鍵は、末尾を`0`で埋めて使う
+- Workerはリマインダーの内容をログに出力する。`wrangler.toml`で`observability`を有効にしているため、ログはCloudflareに残る
+- 処理に失敗すると、エラーの文をDiscordのチャンネルに送る
 
-各リマインダーには以下のオプション設定が可能です：
+## アンインストール
 
-- `enabled`: 通知の有効/無効（デフォルト: true）
-- `message`: カスタムメッセージ（指定がない場合はデフォルトメッセージ）
+1. `npx wrangler delete`でWorkerを削除する
+2. Discordのチャンネルの設定から、Webhookを削除する
+3. GitHubのリポジトリのシークレットを削除し、CloudflareのAPIトークンを無効にする
+
+## ビルド
+
+```bash
+npm ci
+npx wrangler deploy --dry-run
+```
+
+手元で動かすときは、シークレットを`--var`で渡す。`<暗号文>`は`encrypted-reminders.json`の`encrypted`の値。
+
+```bash
+npx wrangler dev --test-scheduled \
+  --var DISCORD_WEBHOOK_URL:<Webhook URL> \
+  --var ENCRYPTION_SECRET_KEY:<鍵> \
+  --var ENCRYPTED_REMINDERS_CONFIG:<暗号文> \
+  --var MANUAL_TRIGGER_SECRET_KEY:<文字列>
+curl "http://localhost:8787/__scheduled?cron=0+18+*+*+*"
+```
 
 ## ライセンス
 
-MIT License
+[MIT License](LICENSE)
